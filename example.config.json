@@ -1,0 +1,10 @@
+{
+    "http_addr": ":8080",
+    "http_timeout":"15s",
+    "db_addr":"postgres://postgres:postgres@localhost:5432/btcount?sslmode=disable",
+    "db_min_conns":1,
+    "db_max_conns":5,
+    "log_level":"debug",
+    "log_format":"text",
+    "stat_worker_retry_delay":"15s"
+}

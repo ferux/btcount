@@ -1,0 +1,42 @@
+version: "2"
+
+services:
+  postgres:
+    image: "postgres:13.0-alpine"
+    environment:
+    - POSTGRES_USER=btcount
+    - POSTGRES_PASSWORD=btcount
+    - POSTGRES_DB=btcount
+    ports:
+    - "5432:5432"
+
+  initdb:
+    image: golang:1.16.2
+    command: bash -c "make migrate"
+    working_dir: /app
+    environment:
+      DATABASE_DSN: "postgres://btcount:btcount@postgres/btcount?sslmode=disable"
+    volumes:
+    - .:/app
+    restart: on-failure
+    depends_on:
+    - postgres
+
+  btcount:
+    image: btcount:latest
+    working_dir: /app
+    environment:
+      BTCOUNT_HTTP_ADDR: :8080
+      BTCOUNT_HTTP_TIMEOUT: 15s
+      BTCOUNT_DB_ADDR: postgres://btcount:btcount@postgres:5432/btcount?sslmode=disable
+      BTCOUNT_DB_MIN_CONNS: 1
+      BTCOUNT_DB_MAX_CONNS: 5
+      BTCOUNT_LOG_LEVEL: debug
+      BTCOUNT_LOG_FORMAT: text
+      BTCOUNT_STAT_WORKER_RETRY_DELAY: 15s
+    depends_on:
+    - postgres
+    - initdb
+    ports:
+    - "8080:8080"
+    restart: on-failure
