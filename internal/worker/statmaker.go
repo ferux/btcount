@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ferux/btcount/internal/btcount"
+
 	"go.uber.org/zap"
 )
 
@@ -35,7 +36,7 @@ func RunStatMakerWorker(ctx context.Context, cfg StatMakerWorkerConfig, log *zap
 	)
 
 	for {
-		num, err = handletick(ctx, hstore, tstore, db, time.Now().Truncate(time.Hour))
+		num, err = syncstats(ctx, hstore, tstore, db, time.Now().Truncate(time.Hour).Add(-time.Hour))
 		if err != nil {
 			log.Error("unable to handle first tick", zap.Error(err))
 
@@ -52,7 +53,7 @@ func RunStatMakerWorker(ctx context.Context, cfg StatMakerWorkerConfig, log *zap
 		break
 	}
 
-	timer := time.NewTimer(getNextTickDuration())
+	timer := time.NewTimer(untilNextHour())
 
 	for {
 		select {
@@ -66,7 +67,7 @@ func RunStatMakerWorker(ctx context.Context, cfg StatMakerWorkerConfig, log *zap
 
 		log.Debug("handle tick for stats", zap.Time("till", till))
 
-		num, err = handletick(ctx, hstore, tstore, db, till)
+		num, err = syncstats(ctx, hstore, tstore, db, till)
 		if err != nil {
 			log.Error("unable to handle tick", zap.Error(err))
 
@@ -76,19 +77,24 @@ func RunStatMakerWorker(ctx context.Context, cfg StatMakerWorkerConfig, log *zap
 
 		log.Debug("handled tick", zap.Int("inserted_stats", num))
 
-		timer.Reset(getNextTickDuration())
+		timer.Reset(untilNextHour())
 	}
 }
 
-func getNextTickDuration() time.Duration {
+// unitlNextHour calculates duration before the next hour.
+func untilNextHour() time.Duration {
 	return time.Until(time.Now().Add(time.Hour).Truncate(time.Hour))
 }
 
-func handletick(ctx context.Context, hstore btcount.HistoryStatStorage, tstore btcount.TransactionStorage, db btcount.Database, till time.Time) (amount int, err error) {
+func syncstats(ctx context.Context, hstore btcount.HistoryStatStorage, tstore btcount.TransactionStorage, db btcount.Database, till time.Time) (amount int, err error) {
 	var hstat btcount.HistoryStat
 	hstat, err = hstore.LoadLastStat(ctx, db, till)
 	if err != nil && !errors.Is(err, btcount.ErrNotFound) {
 		return 0, fmt.Errorf("loading last history stat: %w", err)
+	}
+
+	if !hstat.Datetime.Before(till) {
+		return 0, nil
 	}
 
 	var ts []btcount.Transaction

@@ -52,7 +52,7 @@ func Prepare() error {
 
 	hstore = postgres.NewHistoryStore()
 	tstore = postgres.NewTransactionStore()
-	wAPI = api.NewWalletAPI(db, hstore, tstore)
+	wAPI = api.NewWalletAPI(db, hstore, tstore, nil)
 
 	return nil
 }

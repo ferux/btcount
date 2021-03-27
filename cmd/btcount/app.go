@@ -14,6 +14,7 @@ import (
 	"github.com/ferux/btcount/internal/btcount"
 	"github.com/ferux/btcount/internal/bthttp"
 	"github.com/ferux/btcount/internal/btlog"
+	"github.com/ferux/btcount/internal/cache"
 	"github.com/ferux/btcount/internal/postgres"
 	"github.com/ferux/btcount/internal/worker"
 
@@ -51,7 +52,16 @@ func app(ctx context.Context, cfg btcount.Config) (err error) {
 	}, log)
 	httpapi.MountDebug()
 
-	walletAPI := api.NewWalletAPI(db, hstore, tstore)
+	statcache, err := cache.InitHistoryStatCollector(ctx, cache.HistoryStatParams{
+		HStore: hstore,
+		TStore: tstore,
+		DB:     db,
+	}, log)
+	if err != nil {
+		log.Warn("unable to init cache", zap.Error(err))
+		statcache = nil
+	}
+	walletAPI := api.NewWalletAPI(db, hstore, tstore, statcache)
 	httpapi.MountWalletAPI(walletAPI)
 
 	var wg sync.WaitGroup

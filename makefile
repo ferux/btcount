@@ -31,3 +31,8 @@ image:
 
 test:
 	go test -count=1 -race -cover ./internal/...
+.PHONY: test
+
+check:
+	golangci-lint run
+.PHONY: check
