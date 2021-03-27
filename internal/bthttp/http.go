@@ -24,9 +24,13 @@ const (
 	serverName  = "btcount-http-server/1.0"
 )
 
-// MessageResponse is a model of any response.
-type MessageResponse struct {
+// messageResponse is a model of any response.
+type messageResponse struct {
 	Message string `json:"message"`
+}
+
+type balanceResponse struct {
+	Balance btcount.Decimal `json:"balance"`
 }
 
 // asJSON marshals data into JSON, setups proper headers and responds.
@@ -64,7 +68,7 @@ func (ve *validationError) fromValidationError(verr validator.FieldError) {
 func readRequestAsJSON(ctx context.Context, w http.ResponseWriter, r *http.Request, data interface{}) (success bool) {
 	err := json.NewDecoder(r.Body).Decode(data)
 	if err != nil {
-		asJSON(ctx, w, MessageResponse{
+		asJSON(ctx, w, messageResponse{
 			Message: err.Error(),
 		}, http.StatusBadRequest)
 
@@ -82,7 +86,7 @@ func respondError(ctx context.Context, w http.ResponseWriter, err error) {
 		return
 	}
 
-	var message MessageResponse
+	var message messageResponse
 	var code int
 	switch {
 	case errors.Is(err, btcount.ErrInvalidParameter),

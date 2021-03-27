@@ -20,6 +20,8 @@ func middlewareRequestID(next http.Handler) http.Handler {
 		r = r.WithContext(ctx)
 
 		next.ServeHTTP(w, r)
+
+		w.Header().Set(xreqIDHeader, xreqid)
 	})
 }
 

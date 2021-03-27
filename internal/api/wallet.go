@@ -19,17 +19,8 @@ type WalletAPI interface {
 	// FetchBalanceByHour loads balance of the wallet by the provided
 	// time range.
 	FetchBalanceByHour(ctx context.Context, from, till time.Time) (ts []btcount.HistoryStat, err error)
-}
-
-// NopWalletAPI implements WalletAPI and stands for No-op entity.
-type NopWalletAPI struct{}
-
-// CreateTransaction implements WalletAPI.
-func (NopWalletAPI) CreateTransaction(context.Context, btcount.Transaction) error { return nil }
-
-// FetchBalanceByHour implements WalletAPI.
-func (NopWalletAPI) FetchBalanceByHour(context.Context, time.Time, time.Time) ([]btcount.HistoryStat, error) {
-	return nil, nil
+	// GetCurrentBalance gets the actual balance.
+	GetCurrentBalance(ctx context.Context) (amount btcount.Decimal, err error)
 }
 
 // NewWalletAPI creates a new wallet api.
@@ -52,10 +43,6 @@ type walletAPI struct {
 
 // CreateTransaction implements WalletAPI interface.
 func (api walletAPI) CreateTransaction(ctx context.Context, transaction btcount.Transaction) (err error) {
-	if transaction.Amount.LessThan(btcount.DecimalFromFloat(0)) {
-		return fmt.Errorf("%w: %s", btcount.ErrNegativeValue, "amount")
-	}
-
 	if transaction.Datetime.IsZero() {
 		return fmt.Errorf("%w: %s", btcount.ErrInvalidParameter, "datetime")
 	}
@@ -152,6 +139,38 @@ func (api walletAPI) FetchBalanceByHour(ctx context.Context, since time.Time, ti
 
 	newstats := btcount.CollectTransactionsIntoStats(ts, lastStat.Amount)
 	return append(stats, newstats...), nil
+}
+
+func (api walletAPI) GetCurrentBalance(ctx context.Context) (amount btcount.Decimal, err error) {
+	if api.statCollector != nil {
+		return api.statCollector.GetStat().Amount, nil
+	}
+
+	var lastStat btcount.HistoryStat
+	lastStat, err = api.hstore.LoadLastStat(ctx, api.db, time.Now())
+	if err != nil {
+		return amount, fmt.Errorf("loading last history stat: %w", err)
+	}
+
+	var ts []btcount.Transaction
+	ts, err = api.tstore.Load(ctx, api.db, btcount.TimerangeQuery{
+		Since: lastStat.Datetime,
+		Till:  time.Now(),
+	})
+	if err != nil {
+		return amount, fmt.Errorf("loading transactions: %w", err)
+	}
+
+	if len(ts) == 0 {
+		return lastStat.Amount, nil
+	}
+
+	stats := btcount.CollectTransactionsIntoStats(ts, lastStat.Amount)
+	if len(stats) == 0 {
+		return lastStat.Amount, nil
+	}
+
+	return stats[len(stats)-1].Amount, nil
 }
 
 func (api walletAPI) loadBalanceSlow(ctx context.Context, since, till time.Time) (stats []btcount.HistoryStat, err error) {

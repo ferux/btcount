@@ -13,7 +13,7 @@ import (
 )
 
 type transactionRequest struct {
-	Amount   float64   `json:"amount" validate:"required,gt=0"`
+	Amount   float64   `json:"amount" validate:"required"`
 	Datetime time.Time `json:"datetime" validate:"required"`
 }
 
@@ -50,7 +50,7 @@ func saveTransaction(wapi api.WalletAPI) (h http.Handler) {
 			return
 		}
 
-		asJSON(ctx, w, MessageResponse{Message: "success"}, http.StatusCreated)
+		asJSON(ctx, w, messageResponse{Message: "success"}, http.StatusCreated)
 	})
 }
 
@@ -93,11 +93,30 @@ func getHistory(wapi api.WalletAPI) (h http.Handler) {
 	})
 }
 
+func getBalance(wapi api.WalletAPI) (h http.Handler) {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		amount, err := wapi.GetCurrentBalance(ctx)
+		if err != nil {
+			respondError(ctx, w, err)
+
+			return
+		}
+
+		resp := balanceResponse{
+			Balance: amount,
+		}
+
+		asJSON(ctx, w, resp, http.StatusOK)
+	})
+}
+
 func rootHandler() (h http.Handler) {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		asJSON(ctx, w, MessageResponse{
+		asJSON(ctx, w, messageResponse{
 			Message: "requested path " + r.URL.Path + " not found",
 		}, http.StatusNotFound)
 	})

@@ -61,6 +61,9 @@ func (srv *Server) MountWalletAPI(wapi api.WalletAPI) {
 
 	v1.Handle("/wallet/history", getHistory(wapi)).
 		Methods(http.MethodPost)
+
+	v1.Handle("/wallet/balance", getBalance(wapi)).
+		Methods(http.MethodGet)
 }
 
 // MountDebug mounts debug related handlers.
