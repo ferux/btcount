@@ -10,6 +10,7 @@ of balance changing.
 | POST | /api/v1/wallet/transaction | {"`amount`": 0.0, "`datetime`": "2021-01-01T01:00:00+00:00"} | Creates a new transaction. Amount should be positive |
 | POST | /api/v1/wallet/history | {"`startDatetime`": "2021-01-01T01:00:00+00:00", "`endDatetime`": "2021-01-01T03:00:00+00:00"} | Returns the history of the balance |
 | GET  | /api/v1/wallet/balance | no-op | Returns the current balance |
+
 ## Run the service
 
 ### Via docker-compose
